@@ -1,0 +1,30 @@
+#! /usr/bin/env python
+import argparse
+import unify_metadata
+import sys
+
+
+parser = argparse.ArgumentParser(description='TBProfiler pipeline',formatter_class=argparse.ArgumentDefaultsHelpFormatter,add_help=False)
+subparsers = parser.add_subparsers(help="Task to perform")
+
+# Profile #
+parser_sub = subparsers.add_parser('mappings', help='Run whole profiling pipeline', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser_sub.add_argument("--raw-data",type=str,help="Raw data file",required=True)
+parser_sub.add_argument("--outfile",default="mappings.conf",type=str,help="Output file")
+parser_sub.add_argument("--defaults",type=str,help="Comma separated list of drugs",required=True)
+parser_sub.set_defaults(func=unify_metadata.get_mapping_skeleton)
+
+
+# Profile #
+parser_sub = subparsers.add_parser('standardise', help='Run whole profiling pipeline', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser_sub.add_argument("--conf",type=str,help="Raw data file",required=True)
+parser_sub.add_argument("--outfile",type=str,help="Raw data file",required=True)
+parser_sub.add_argument("--raw-data",type=str,help="Raw data file",required=True)
+parser_sub.set_defaults(func=unify_metadata.standardise_raw_data)
+
+
+args = parser.parse_args()
+if hasattr(args, 'func'):
+    args.func(args)
+else:
+    parser.print_help(sys.stderr)
