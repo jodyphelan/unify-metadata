@@ -11,6 +11,15 @@ import datetime
 
 __version__ = "0.1.0"
 
+def Red(skk): return("\033[91m{}\033[00m" .format(skk))
+def Green(skk): return("\033[92m{}\033[00m" .format(skk))
+def Yellow(skk): return("\033[93m{}\033[00m" .format(skk))
+def LightPurple(skk): return("\033[94m{}\033[00m" .format(skk))
+def Purple(skk): return("\033[95m{}\033[00m" .format(skk))
+def Cyan(skk): return("\033[96m{}\033[00m" .format(skk))
+def LightGray(skk): return("\033[97m{}\033[00m" .format(skk))
+def Black(skk): return("\033[98m{}\033[00m" .format(skk))
+
 def get_csv_data(x):
     """Returns a dictionary of column names and values"""
     data = defaultdict(set)
@@ -35,13 +44,13 @@ def get_mapping_skeleton(args):
     csv_columns = list(csv_data)
     conf = {}
 
-    study_name = input("What is the study name?\n")
+    study_name = input(Cyan("What is the study name?\n"))
     conf["study_name"] = study_name
 
 
 
     for element in standard_columns:
-        print("------" + str(element) + "------")
+        print("------ " + Green(str(element)) + " ------")
         happy = False
         while not happy:
             if isinstance(element,str):
@@ -54,7 +63,7 @@ def get_mapping_skeleton(args):
                 sys.stderr.write(f"Found column {tmp_c} for {c}\n")
                 data_column = tmp_c
             else:
-                i = input(f"What is the mapping for {c}? (leave blank to skip)\n" + "\n".join([f"{i+1}) {x}" for i,x in enumerate(csv_columns)]) + "\n")
+                i = input(Cyan(f"What is the mapping for {c}? (leave blank to skip)\n") + "\n".join([f"{i+1}) {x}" for i,x in enumerate(csv_columns)]) + "\n")
                 if i=="":
                     break
                 else:
@@ -87,11 +96,13 @@ def get_mapping_skeleton(args):
                 tmp_conf["mapping"] = mapping
             
             
-            qhappy = input("Are you happy with this mapping? %s (Y/n)\n" % str(tmp_conf))
+            qhappy = input(f"Are you happy with this mapping for {data_column}? {Green(str(tmp_conf))} (Y/n)\n")
             if qhappy=="y" or  qhappy=="":
                 happy = True  
 
         conf[c] = tmp_conf
+        print("\n#####################\n")
+
     with open(args.outfile,"w") as fh:
         json.dump(conf,fh,indent=4)
 
