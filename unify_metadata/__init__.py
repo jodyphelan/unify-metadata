@@ -189,3 +189,50 @@ def download_sra_data(taxid):
 
 def test(args):
     standardise_raw_data(args)
+
+
+def combine_csv_files(args):
+    
+    columns = defaultdict(int)
+    for f in args.files:
+        for row in csv.DictReader(open(f)):
+            for k in row:
+                columns[k] += 1
+    
+    additional_data = {}
+    additional_columns = defaultdict(int)
+    if args.additional_data:
+        if not args.additional_data_id:
+            args.additional_data_id = args.id
+        for row in csv.DictReader(open(args.additional_data)):
+            additional_data[row[args.additional_data_id]] = row
+        for k in row:
+            if k in columns:
+                continue
+            additional_columns[k] += 1
+
+    rows = []
+    for f in args.files:
+        for row in csv.DictReader(open(f)):
+            new_row = {k:row.get(k,args.missing_value) for k in columns}
+
+            if args.additional_data:
+                if row[args.id] in additional_data:
+                    for k,v in additional_data[row[args.id]].items():
+                        if k in new_row:
+                            continue
+                        new_row[k] = v
+                else:
+                    for k in additional_columns:
+                        if k in new_row:
+                            continue
+                        new_row[k] = args.missing_value
+
+
+            rows.append(new_row)
+
+
+    with open(args.outfile,"w") as fh:
+        writer = csv.DictWriter(fh,fieldnames=list(columns)+list(additional_columns))
+        writer.writeheader()
+        writer.writerows(rows)
