@@ -12,5 +12,6 @@ setuptools.setup(
 	long_description="Tool of standardising metadata",
 	scripts= [
 		'scripts/unify-metadata',
+		'scripts/combine_csv_files.py',
 		]
 )

@@ -31,6 +31,16 @@ parser_sub.add_argument("--outfile",type=str,help="Raw data file",required=True)
 parser_sub.add_argument("files",type=str,nargs="+",help="Raw data file")
 parser_sub.set_defaults(func=unify_metadata.combine_csv_files)
 
+parser_sub = subparsers.add_parser('bioproject-csv', help='Combine multiple csv files together', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser_sub.add_argument("--taxid",type=str,help="Raw data file",required=True)
+parser_sub.add_argument("--bioprojects",type=str,nargs="+",help="Raw data file",required=True)
+parser_sub.add_argument("--defaults",type=str,help="Raw data file",required=True)
+parser_sub.add_argument("--outfile",type=str,default="data.clean.csv",help="Raw data file")
+parser_sub.add_argument("--additional-data",type=str,help="Raw data file")
+parser_sub.add_argument("--additional-data-id",type=str,help="Raw data file")
+parser_sub.set_defaults(func=unify_metadata.ena.generate_data_from_bioprojects)
+
+
 args = parser.parse_args()
 if hasattr(args, 'func'):
     args.func(args)

@@ -8,8 +8,11 @@ import dateutil.parser
 import os
 import subprocess as sp
 import datetime 
+from .questions import multiple_choice
 
 __version__ = "0.1.0"
+
+from .ena import *
 
 def Red(skk): return("\033[91m{}\033[00m" .format(skk))
 def Green(skk): return("\033[92m{}\033[00m" .format(skk))
@@ -65,24 +68,23 @@ def get_mapping_skeleton(args):
             else:
                 i = input(Cyan(f"What is the mapping for {c}? (leave blank to skip)\n") + "\n".join([f"{i+1}) {x}" for i,x in enumerate(csv_columns)]) + "\n")
                 if i=="":
-                    break
+                    data_column = None
                 else:
                     data_column = csv_columns[int(i)-1]
-            if data_column=="":
-                continue
 
 
             tmp_conf = {"column":data_column}
+            
+            if data_column is None:
+                break
 
             mapping =  {}
 
             if "values" in element:
                 values = element["values"]
                 for v in sorted(csv_data[data_column]):
-                    i = input(
-                        f"What is the mapping for {v}?\n" + "\n".join([f"{i+1}) {x}" for i,x in enumerate(values)]) + "\n"
-                    )
-                    mapping[v] = values[int(i)-1]
+                    question = f"What is the mapping for {v}?"
+                    mapping[v] = multiple_choice(question,values)
                 tmp_conf["mapping"] = mapping
 
             if "date" in element:
@@ -125,7 +127,9 @@ def standardise_raw_data(args):
             if isinstance(conf[key],str):
                 new_row[key] = conf[key]
             elif isinstance(conf[key],dict):
-                if "mapping" in conf[key]:
+                if conf[key]['column'] is None:
+                    new_row[key] = "NA"
+                elif "mapping" in conf[key]:
                     new_row[key] = conf[key]["mapping"][row[conf[key]["column"]]]
                 else:
                     new_row[key] = row[conf[key]["column"]]
@@ -141,7 +145,6 @@ def parse_run_data(path,projects=None,project_blacklist=None):
     tmp_sample2ers = defaultdict(set)
     sample_accession2err = defaultdict(set)
     sample2prj = {}
-    err2sample = {}
     err_ignore_sample = []
     err2prj = {}
     print("Loading run file")
@@ -174,18 +177,6 @@ def parse_run_data(path,projects=None,project_blacklist=None):
         sample2ers[s] = "_".join(sorted(tmp_sample2ers[s]))
 
 
-def download_sra_data(taxid):
-    home = os.path.expanduser("~")
-    run_file = f"{home}/.unify_metadata/{taxid}.runs.txt"
-    samples_file = f"{home}/.unify_metadata/{taxid}.samples.txt"
-    if not os.path.exists(f"{home}/.unify_metadata"):
-        os.mkdir(f"{home}/.unify_metadata")
-    if get_file_age(run_file)>7:
-        print("Downloading runs file")
-        sp.call(f"curl -X POST -H \"Content-Type: application/x-www-form-urlencoded\" -d 'result=read_run&query=tax_tree({taxid})&fields=study_accession%2Csample_accession%2Csecondary_sample_accession%2Crun_accession%2Cinstrument_model%2Clibrary_name%2Clibrary_layout%2Clibrary_strategy%2Cbase_count%2Cexperiment_title%2Cexperiment_alias%2Crun_alias%2Csubmitted_ftp%2Csample_title%2Csample_alias&format=tsv' \"https://www.ebi.ac.uk/ena/portal/api/search\" > {run_file}",shell=True)
-    if get_file_age(samples_file)>7:
-        print("Downloading samples file")
-        sp.call(f"curl -X POST -H \"Content-Type: application/x-www-form-urlencoded\" -d 'result=sample&query=tax_tree(77643)&fields=sample_accession%2Ccollected_by%2Ccollection_date%2Ccountry%2Cculture_collection%2Cdescription%2Cfirst_public%2Cisolate%2Cisolation_source%2Clocation%2Cstrain%2Ctissue_type%2Csample_alias%2Ccenter_name%2Cenvironment_material%2Cproject_name%2Chost%2Chost_tax_id%2Chost_status%2Chost_sex%2Csubmitted_host_sex%2Chost_body_site%2Cbroker_name%2Csample_title&format=tsv' \"https://www.ebi.ac.uk/ena/portal/api/search\" > {samples_file}",shell=True)
 
 def test(args):
     standardise_raw_data(args)
@@ -206,24 +197,25 @@ def combine_csv_files(args):
             args.additional_data_id = args.id
         for row in csv.DictReader(open(args.additional_data)):
             additional_data[row[args.additional_data_id]] = row
-        for k in row:
-            if k in columns:
-                continue
-            additional_columns[k] += 1
+            for k in row:
+                if k not in columns:
+                    additional_columns[k] = 1
+
+
 
     rows = []
     for f in args.files:
         for row in csv.DictReader(open(f)):
             new_row = {k:row.get(k,args.missing_value) for k in columns}
 
-            if args.additional_data:
-                if row[args.id] in additional_data:
-                    for k,v in additional_data[row[args.id]].items():
-                        if k in new_row:
-                            continue
-                        new_row[k] = v
+            if row[args.id] in additional_data:
+                if args.additional_data:
+                        for k,v in additional_data[row[args.id]].items():
+                            if k in new_row and new_row[k] != args.missing_value:
+                                continue
+                            new_row[k] = v
                 else:
-                    for k in additional_columns:
+                    for k in additional_data[row[args.id]].keys():
                         if k in new_row:
                             continue
                         new_row[k] = args.missing_value
