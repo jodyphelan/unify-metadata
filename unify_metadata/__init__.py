@@ -13,6 +13,7 @@ from .questions import multiple_choice
 __version__ = "0.1.0"
 
 from .ena import *
+from .cli import *
 
 def Red(skk): return("\033[91m{}\033[00m" .format(skk))
 def Green(skk): return("\033[92m{}\033[00m" .format(skk))
