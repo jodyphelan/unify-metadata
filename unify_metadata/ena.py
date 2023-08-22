@@ -23,7 +23,7 @@ def update_ena_db(tax_id):
 
     if (not os.path.isfile(runs_file)) or (not os.path.isfile(biosamples_file)) or dT.days>7:
         print("Downloading run file")
-        subprocess.call(f"curl -X POST -H \"Content-Type: application/x-www-form-urlencoded\" -d 'result=read_run&query=tax_tree({tax_id})&fields=study_accession%2Csample_accession%2Csecondary_sample_accession%2Crun_accession%2Cinstrument_model%2Clibrary_name%2Clibrary_layout%2Clibrary_strategy%2Cbase_count%2Cexperiment_title%2Cexperiment_alias%2Crun_alias%2Csubmitted_ftp%2Csample_title%2Csample_alias&format=tsv' \"https://www.ebi.ac.uk/ena/portal/api/search\" > {runs_file}",shell=True)
+        subprocess.call(f"curl -X POST -H \"Content-Type: application/x-www-form-urlencoded\" -d 'result=read_run&query=tax_tree({tax_id})&fields=study_accession%2Csample_accession%2Csecondary_sample_accession%2Crun_accession%2Cinstrument_model%2Cinstrument_platform%2Clibrary_name%2Clibrary_layout%2Clibrary_strategy%2Cbase_count%2Cexperiment_title%2Cexperiment_alias%2Crun_alias%2Csubmitted_ftp%2Csample_title%2Csample_alias&format=tsv' \"https://www.ebi.ac.uk/ena/portal/api/search\" > {runs_file}",shell=True)
         print("Downloading biosample file")
         subprocess.call(f"curl -X POST -H \"Content-Type: application/x-www-form-urlencoded\" -d 'result=sample&query=tax_tree({tax_id})&fields=sample_accession%2Ccollected_by%2Ccollection_date%2Ccountry%2Cculture_collection%2Cdescription%2Cfirst_public%2Cisolate%2Cisolation_source%2Clocation%2Cstrain%2Ctissue_type%2Csample_alias%2Ccenter_name%2Cenvironment_material%2Cproject_name%2Chost%2Chost_tax_id%2Chost_status%2Chost_sex%2Csubmitted_host_sex%2Chost_body_site%2Cbroker_name%2Csample_title&format=tsv' \"https://www.ebi.ac.uk/ena/portal/api/search\" > {biosamples_file}",shell=True)
 
@@ -42,7 +42,7 @@ class RunDB:
             # skip excluded projects
             if project_excluded and row["study_accession"] in project_excluded: 
                 continue
-            if platform and row["instrument_model"]!=platform:
+            if platform and row["instrument_platform"]!=platform:
                 continue
             
             self._ers.add(row["sample_accession"])
