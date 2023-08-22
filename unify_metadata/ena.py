@@ -32,7 +32,7 @@ def get_taxid_files(tax_id):
     return data_dir+tax_id+".runs.txt",data_dir+tax_id+".biosamples.txt"
 
 class RunDB:
-    def __init__(self,runs_file,projects=None,project_excluded=None):
+    def __init__(self,runs_file,projects=None,project_excluded=None, platform=None):
         self._sample2ers = defaultdict(set)
         self._ers2proj = {}
         self._ers2err = defaultdict(set)
@@ -41,6 +41,8 @@ class RunDB:
         for row in csv.DictReader(open(runs_file),delimiter="\t"):
             # skip excluded projects
             if project_excluded and row["study_accession"] in project_excluded: 
+                continue
+            if platform and row["instrument_model"]!=platform:
                 continue
             
             self._ers.add(row["sample_accession"])
