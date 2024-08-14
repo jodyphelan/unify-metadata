@@ -1,3 +1,9 @@
+"""
+A package to unify metadata from different sources
+"""
+
+__version__ = "0.2.0"
+
 import json
 import sys
 import argparse
@@ -9,9 +15,6 @@ import os
 import subprocess as sp
 import datetime 
 from .questions import multiple_choice
-
-__version__ = "0.1.0"
-
 from .ena import *
 from .cli import *
 
