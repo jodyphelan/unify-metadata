@@ -5,9 +5,15 @@ import csv
 from collections import defaultdict
 from .questions import question
 from .conf import get_default_columns
-from .utils import sanitize_location, left_join_rows
+from .utils import sanitize_location, sanitize_date, left_join_rows
+import yaml
+import json
 
 data_dir = os.path.expanduser('~')+"/.unify-metadata/"
+
+def get_taxid_file_names(tax_id):
+    tax_id = str(tax_id)
+    return data_dir+tax_id+".runs.txt",data_dir+tax_id+".biosamples.txt"
 
 def update_ena_db(tax_id):
     tax_id = str(tax_id)
@@ -15,7 +21,7 @@ def update_ena_db(tax_id):
     if not os.path.isdir(data_dir):
         os.mkdir(data_dir)
     
-    runs_file, biosamples_file = get_taxid_files(tax_id)
+    runs_file, biosamples_file = get_taxid_file_names(tax_id)
 
     if os.path.isfile(runs_file):
         dT = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(runs_file))
@@ -27,9 +33,12 @@ def update_ena_db(tax_id):
         print("Downloading biosample file")
         subprocess.call(f"curl -X POST -H \"Content-Type: application/x-www-form-urlencoded\" -d 'result=sample&query=tax_tree({tax_id})&fields=sample_accession%2Ccollected_by%2Ccollection_date%2Ccountry%2Cculture_collection%2Cdescription%2Cfirst_public%2Cisolate%2Cisolation_source%2Clocation%2Cstrain%2Ctissue_type%2Csample_alias%2Ccenter_name%2Cenvironment_material%2Cproject_name%2Chost%2Chost_tax_id%2Chost_status%2Chost_sex%2Csubmitted_host_sex%2Chost_body_site%2Cbroker_name%2Csample_title&format=tsv' \"https://www.ebi.ac.uk/ena/portal/api/search\" > {biosamples_file}",shell=True)
 
+    return runs_file,biosamples_file
+
+
 def get_taxid_files(tax_id):
-    tax_id = str(tax_id)
-    return data_dir+tax_id+".runs.txt",data_dir+tax_id+".biosamples.txt"
+    return update_ena_db(tax_id)
+
 
 class RunDB:
     def __init__(self,runs_file,projects=None,project_excluded=None, platform=None):
@@ -64,7 +73,39 @@ class RunDB:
     def ers2proj(self,ers):
         return self._ers2proj[ers]
 
+    def find_sample_accession(self,query):
+        if query in self._sample2ers:
+            if len(self._sample2ers[query])>1:
+                return None
+            else:
+                return list(self._sample2ers[query])[0]
+        else:
+            return None
+    
+    def get_sample_info(self,query):
+        info = {}
+        sample_acc = self.find_sample_accession(query)
+        if sample_acc is None:
+            return {
+                "sample_accession":None,
+                "run_accession":None,
+                "study_accession":None,
+                "wgs_id":None,
+            }
+        info["sample_accession"] = sample_acc
+        runs = self.ers2err(sample_acc)
+        info["run_accession"] = ";".join(runs)
+        info["study_accession"] = self.ers2proj(sample_acc)
+                                     
+        if len(runs)==1:
+            info["wgs_id"] = list(runs)[0]
+        else:
+            info["wgs_id"] = sample_acc
+        
+        return info
 
+
+        
 class BiosampleDB:
     def __init__(self,biosamples_file):
         self._sample2info = {}
@@ -72,64 +113,65 @@ class BiosampleDB:
             self._sample2info[row["sample_accession"]] = row
 
     def get_sample_info(self,sample):
-        return self._sample2info[sample]
+        result = {
+            "sample_accession":None,
+            "country_iso3":None,
+            "date_of_collection":None,
+        }
+        if sample not in self._sample2info:
+            return result
+        raw_info = self._sample2info[sample]
+        result["sample_accession"] = raw_info["sample_accession"]
+        if "country" in raw_info:
+            if raw_info["country"]!="":
+                result["country_iso3"] = sanitize_location(raw_info["country"])
+        if "location" in raw_info:
+            if raw_info["location"]!="":
+                result["country_iso3"] = sanitize_location(raw_info["country"])
+        if "collection_date" in raw_info:
+            if raw_info["collection_date"]!="":
+                result["date_of_collection"] = sanitize_date(raw_info["collection_date"])
+        return result
 
 
 
 def generate_data_from_bioprojects(args):
     default_columns = get_default_columns(args.defaults)
-    print(default_columns)
-    study_name = question("Study name?")
+    project_name = os.path.basename(os.getcwd())
     runs_file,biosamples_file = get_taxid_files(args.taxid)
     rundb = RunDB(runs_file)
-
-    samples = list(*[rundb.get_project_samples(b) for b in args.bioprojects])
+    samples = []
+    for b in args.bioprojects:
+        samples += list(rundb.get_project_samples(b))
     
-    sampledb = BiosampleDB(biosamples_file)
     
-    country_from_biosamples = [ sampledb.get_sample_info(sample).get("country",None) for sample in samples ]
-    if n_missing_country:=country_from_biosamples.count(None)>0:
-        country = question(f"There are {n_missing_country} samples are missing country information in biosamples file. Do you want to set a default country?")
+    fieldnames = ["id"]
+    if args.country:
+        fieldnames.append("country")
 
-        
+    
     
 
-    rows = []
-    for sample in samples:
-        if len(runs:=rundb.ers2err(sample))==1:
-            wgs_id = list(runs)[0]
-        else:
-            wgs_id = sample
-        row = {
-            "study_name":study_name,
-            "wgs_id":wgs_id,
-            "study_accession":rundb.ers2proj(sample),
-            "sample_accession":sample,
-            "run_accession":";".join(runs),
-        }
-        biosample = sampledb.get_sample_info(sample)
-        for column in default_columns:
-            if column in row:
-                continue
-            elif column in biosample:
-                if column in ["country","geographic_source"]:
-                    row["country_code"] = sanitize_location(biosample[column])
-                else:
-                    row[column] = biosample[column]
-            elif column=="country" and country:
-                row[column] = sanitize_location(country)
-            else:
-                if column=="wgs_id":
-                    print("asjdiao")
-                row[column] = None
-        rows.append(row)
-
-    if args.additional_data:
-        additional_data_rows = [r for r in csv.DictReader(open(args.additional_data),)]
-        rows = left_join_rows(rows,additional_data_rows,"wgs_id","wgs_id")
-        
-    with open(args.outfile,"w") as f:
-        writer = csv.DictWriter(f,fieldnames=list(rows[0]))
+    with open("raw_data.csv","w") as fh:
+        writer = csv.DictWriter(fh,fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
-        
+        for sample in samples:
+            row = {"id":sample}
+            if args.country:
+                row["country"] = args.country
+            writer.writerow(row)
+    
+    default_columns = list(yaml.safe_load_all(open(args.defaults)))[0]
+    mappings = {
+        "study_name": project_name,
+        "raw_data": "raw_data.csv"
+    }
+    for element in default_columns:
+        if isinstance(element,str):
+            mappings[element] = {"column": None}
+        else:
+            mappings[list(element)[0]] = {"column": None}
+    mappings['id'] = {"column":"id"}
+    json.dump(mappings,open("mappings.conf.json","w"),indent=4)
+    
+    subprocess.run(f"unify-metadata standardise  --conf mappings.conf.json --raw-data raw_data.csv --find-wgs-id --taxid {args.taxid}",shell=True)

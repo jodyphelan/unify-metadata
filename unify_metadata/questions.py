@@ -16,6 +16,8 @@ def question(q,required=True):
             print(Red("This field is required"))
         else:
             break
+    if answer == "":
+        answer = None
     return answer 
 
 def multiple_choice(q,values):
