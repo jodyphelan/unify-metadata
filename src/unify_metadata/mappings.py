@@ -2,8 +2,6 @@ from .utils import *
 import yaml
 from .questions import multiple_choice
 import sys
-from inquirer import Text
-from .ena import RunDB, get_taxid_files
 
 def get_mapping_skeleton(args):
     standard_columns = list(yaml.safe_load_all(open(args.defaults)))[0]
@@ -53,12 +51,7 @@ def get_mapping_skeleton(args):
 
             mapping =  {}
 
-            # if "id" in element:
-            #     if args.find_wgs_id:
-            #         rundb = RunDB(get_taxid_files(args.taxid)[0])
-            #         for v in csv_data[data_column]:
-            #             mapping[v] = rundb.get_sample_info(v)
-            # print(mapping)
+
             
             
 
@@ -84,7 +77,9 @@ def get_mapping_skeleton(args):
                         tmpdate = sanitize_date(v,regex)
                         mapping[v] = tmpdate
                     except:
-                        userdate = input(f"Could not parse {v} as a date. Press manually enter to value continue\n")
+                        userdate = input(f"Could not parse |{v}| as a date. Press manually enter to value continue\n")
+                        if userdate.lower() in ("null","none","","n/a","na"):
+                            userdate = None
                         mapping[v] = userdate
                 tmp_conf["mapping"] = mapping
             

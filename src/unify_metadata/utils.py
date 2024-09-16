@@ -5,6 +5,7 @@ from .questions import question
 import csv
 from collections import defaultdict
 from datetime import datetime
+import re
 
 
 data_dir = os.path.expanduser('~')+"/.unify-metadata/"
@@ -100,6 +101,8 @@ def combine_csv_files(args):
         writer.writerows(rows)
 
 def sanitize_location(location):
+    if location in ("not collected","missing"):
+        return None
     lookup = json.load(open(data_dir+"country_lookup.json"))
     if location in lookup:
         return lookup[location]
@@ -112,22 +115,52 @@ def sanitize_location(location):
         json.dump(lookup,open(data_dir+"country_lookup.json","w"),indent=4)
         return country_code
 
-def sanitize_date(date,regex=None):
+def sanitize_date(date,regex=None,function=None):
     if date=="not collected":
         return None
     if regex:
         dt = datetime.strptime(date,regex)
         year = dt.strftime("%Y")
         month = dt.strftime("%m")
-        return float(f'{year}.{int((int(month)/12)*100)}')
+        return float(f'{year}.{int(((int(month)-1)/12)*100)}')
+    if function:
+        try:
+            d = function(date)
+            year = d.strftime("%Y")
+            if re.match(r"^\d{4}$",date):
+                month = 7
+            else:
+                month = d.strftime("%m")
+            if int(year)>1000:
+                return float(f'{year}.{int(((int(month)-1)/12)*100)}')
+        except:
+            pass
     try:
-        year = dateutil.parser.parse(date).strftime("%Y")
-        month = dateutil.parser.parse(date).strftime("%m")
-        return float(f'{year}.{int((int(month)/12)*100)}')
+        if re.match(r"^\d{4}$",date):
+            year = dateutil.parser.parse(date).strftime("%Y")
+            month = 7
+        elif m:=re.match(r"^(\d{4})-(\d{2})-(\d{2})$",date):
+            if int(m.group(2))>12: # if the second number is a month
+                year = datetime.strptime(date,"%Y-%d-%m").strftime("%Y")
+                month = datetime.strptime(date,"%Y-%d-%m").strftime("%m")
+            elif int(m.group(3))>12: # if the third number if a month
+                year = datetime.strptime(date,"%Y-%m-%d").strftime("%Y")
+                month = datetime.strptime(date,"%Y-%m-%d").strftime("%m")
+            else:
+                raise Exception("Invalid date: "+date)
+        else:
+            raise Exception("Invalid date: "+date)
+        return float(f'{year}.{int(((int(month)-1)/12)*100)}')
+        
     except:
-        userdate = question(f"Could not parse |{date}| as a date. Please enter manually")
-        if userdate=="none":
+        lookup = json.load(open(data_dir+"date_lookup.json"))
+        if date in lookup:
+            return lookup[date]
+        userdate = question(f"Could not parse |{date}| as a date. Please enter manually (none)")
+        if userdate.lower() in ("none","","n/a","na"):
             userdate = None
+        lookup[date] = userdate
+        json.dump(lookup,open(data_dir+"date_lookup.json","w"),indent=4)
         return userdate
 
 def left_join_rows(target_rows,source_rows,source_key,target_key):

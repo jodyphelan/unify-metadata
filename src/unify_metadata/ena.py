@@ -8,6 +8,7 @@ from .conf import get_default_columns
 from .utils import sanitize_location, sanitize_date, left_join_rows
 import yaml
 import json
+import dateutil.parser
 
 data_dir = os.path.expanduser('~')+"/.unify-metadata/"
 
@@ -130,7 +131,7 @@ class BiosampleDB:
                 result["country_iso3"] = sanitize_location(raw_info["country"])
         if "collection_date" in raw_info:
             if raw_info["collection_date"]!="":
-                result["date_of_collection"] = sanitize_date(raw_info["collection_date"])
+                result["date_of_collection"] = sanitize_date(raw_info["collection_date"],function=dateutil.parser.parse)
         return result
 
 
@@ -147,6 +148,7 @@ def generate_data_from_bioprojects(args):
     
     fieldnames = ["id"]
     if args.country:
+        args.country = sanitize_location(args.country)
         fieldnames.append("country")
 
     
@@ -166,12 +168,15 @@ def generate_data_from_bioprojects(args):
         "study_name": project_name,
         "raw_data": "raw_data.csv"
     }
+
     for element in default_columns:
         if isinstance(element,str):
             mappings[element] = {"column": None}
         else:
             mappings[list(element)[0]] = {"column": None}
     mappings['id'] = {"column":"id"}
+    if args.country:
+        mappings["country_iso3"] = {"column":"country"}
     json.dump(mappings,open("mappings.conf.json","w"),indent=4)
     
     subprocess.run(f"unify-metadata standardise  --conf mappings.conf.json --raw-data raw_data.csv --find-wgs-id --taxid {args.taxid}",shell=True)

@@ -35,6 +35,7 @@ def main():
     parser_sub.add_argument("--find-wgs-id",action="store_true",help="Raw data file")
     parser_sub.add_argument("--taxid",type=str,help="Raw data file",required='--find-wgs-id' in sys.argv)
     parser_sub.add_argument("--project-name",type=str,help="Raw data file")
+    parser_sub.add_argument('--debug',action='store_true')
     parser_sub.set_defaults(func=pipeline)
 
 
@@ -53,6 +54,7 @@ def main():
     parser_sub.add_argument("--raw-data",type=str,help="Raw data file",required=True)
     parser_sub.add_argument("--find-wgs-id",action="store_true",help="Raw data file")
     parser_sub.add_argument("--taxid",type=str,help="Raw data file",required='--find-wgs-id' in sys.argv)
+    parser_sub.add_argument('--debug',action='store_true')
     parser_sub.set_defaults(func=standardise_raw_data)
 
     parser_sub = subparsers.add_parser('combine', help='Combine multiple csv files together', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
