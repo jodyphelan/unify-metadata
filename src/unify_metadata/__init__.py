@@ -2,7 +2,7 @@
 A package to unify metadata from different sources
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 import json
 import sys
