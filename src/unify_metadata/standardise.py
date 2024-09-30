@@ -77,6 +77,7 @@ def standardise_raw_data(args):
             print(df[['id',key]])
     
     print("Number of resolved IDs:")
+    print(df)
     print(pd.notna(df['wgs_id']).value_counts())
     if args.find_wgs_id:
         if args.debug:

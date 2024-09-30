@@ -122,7 +122,7 @@ def sanitize_date(date,regex=None,function=None):
         dt = datetime.strptime(date,regex)
         year = dt.strftime("%Y")
         month = dt.strftime("%m")
-        return float(f'{year}.{int(((int(month)-1)/12)*100)}')
+        return float(year) + round(((int(month)-1)/12),2)
     if function:
         try:
             d = function(date)
@@ -132,7 +132,7 @@ def sanitize_date(date,regex=None,function=None):
             else:
                 month = d.strftime("%m")
             if int(year)>1000:
-                return float(f'{year}.{int(((int(month)-1)/12)*100)}')
+                return float(year) + round(((int(month)-1)/12),2)
         except:
             pass
     try:
@@ -150,7 +150,7 @@ def sanitize_date(date,regex=None,function=None):
                 raise Exception("Invalid date: "+date)
         else:
             raise Exception("Invalid date: "+date)
-        return float(f'{year}.{int(((int(month)-1)/12)*100)}')
+        return float(year) + round(((int(month)-1)/12),2)
         
     except:
         lookup = json.load(open(data_dir+"date_lookup.json"))
