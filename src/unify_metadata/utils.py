@@ -6,6 +6,7 @@ import csv
 from collections import defaultdict
 from datetime import datetime
 import re
+import yaml
 
 
 data_dir = os.path.expanduser('~')+"/.unify-metadata/"
@@ -51,58 +52,89 @@ def get_file_age(path):
         return 999
 
 
-
+def get_default_columns(filename):
+    conf = list(yaml.safe_load_all(open(filename)))[0]
+    columns = []
+    for element in conf:
+        if isinstance(element,str):
+            columns.append(element)
+        else:
+            columns.append(list(element)[0])
+    return columns
 
 def combine_csv_files(args):
     
-    columns = defaultdict(int)
+    if args.defaults:
+        columns = get_default_columns(args.defaults)
+    else:
+        columns = defaultdict(int)
+        for f in args.files:
+            for row in csv.DictReader(open(f)):
+                for k in row:
+                    columns[k] += 1
+        columns = list(columns)
+    
+    # additional_data = {}
+    # additional_columns = defaultdict(int)
+    # if args.additional_data:
+    #     if not args.additional_data_id:
+    #         args.additional_data_id = args.id
+    #     for row in csv.DictReader(open(args.additional_data)):
+    #         additional_data[row[args.additional_data_id]] = row
+    #         for k in row:
+    #             if k not in columns:
+    #                 additional_columns[k] = 1
+
+
+    ena_column_names = ['wgs_id','id','sample_accession','run_accession','study_accession']
+    columns = ena_column_names + [c for c in columns if c not in ena_column_names]
+
+
+    data = defaultdict(dict)
+    to_combine = ['id','study_name','raw_data']
+    discrepancies = []
     for f in args.files:
         for row in csv.DictReader(open(f)):
-            for k in row:
-                columns[k] += 1
+            for col in columns:
+                if row.get(col,args.missing_value) == args.missing_value:
+                    continue
+                if col not in data[row[args.id]]:
+                    data[row[args.id]][col] = row.get(col,args.missing_value)
+                else:
+                    if col in to_combine:
+                        data[row[args.id]][col] = data[row[args.id]][col] + ";"+row[col]
+                    else:
+                        if row[col]!=data[row[args.id]][col]:
+                            discrepancies.append(f"{row[args.id]}: {col} {data[row[args.id]][col]} != {row[col]}")
+                        else:
+                            pass
+
+    with open('log.txt','w') as f:
+        for d in discrepancies:
+            f.write(d+'\n')
     
-    additional_data = {}
-    additional_columns = defaultdict(int)
-    if args.additional_data:
-        if not args.additional_data_id:
-            args.additional_data_id = args.id
-        for row in csv.DictReader(open(args.additional_data)):
-            additional_data[row[args.additional_data_id]] = row
-            for k in row:
-                if k not in columns:
-                    additional_columns[k] = 1
-
-
 
     rows = []
-    for f in args.files:
-        for row in csv.DictReader(open(f)):
-            new_row = {k:row.get(k,args.missing_value) for k in columns}
+    for sample_id in data:
+        row = {
+            args.id:sample_id
+        }
+        for col in columns:
+            row.update({col:data[sample_id].get(col,args.missing_value)})
+        rows.append(row)
+        
 
-            if row[args.id] in additional_data:
-                if args.additional_data:
-                        for k,v in additional_data[row[args.id]].items():
-                            if k in new_row and new_row[k] != args.missing_value:
-                                continue
-                            new_row[k] = v
-                else:
-                    for k in additional_data[row[args.id]].keys():
-                        if k in new_row:
-                            continue
-                        new_row[k] = args.missing_value
-
-
-            rows.append(new_row)
-
-
+    
     with open(args.outfile,"w") as fh:
-        writer = csv.DictWriter(fh,fieldnames=list(columns)+list(additional_columns))
+        writer = csv.DictWriter(fh,fieldnames=list(columns))
         writer.writeheader()
         writer.writerows(rows)
 
 def sanitize_location(location):
     if location in ("not collected","missing"):
         return None
+    if ":" in location:
+        location = location.split(":")[0]
     lookup = json.load(open(data_dir+"country_lookup.json"))
     if location in lookup:
         return lookup[location]

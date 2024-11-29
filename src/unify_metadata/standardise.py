@@ -11,7 +11,7 @@ def standardise_raw_data(args):
     conf = json.load(open(args.conf))
 
     if args.find_wgs_id:
-        rundb = RunDB(get_taxid_files(args.taxid)[0])
+        rundb = RunDB(get_taxid_files(args.taxid)[0],args.bioprojects)
         sampledb = BiosampleDB(get_taxid_files(args.taxid)[1])
     rows = []
     for row in csv.DictReader(open(conf['raw_data'],"r",encoding="utf-8-sig")):

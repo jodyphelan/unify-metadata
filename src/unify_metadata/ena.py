@@ -4,8 +4,7 @@ import subprocess
 import csv
 from collections import defaultdict
 from .questions import question
-from .conf import get_default_columns
-from .utils import sanitize_location, sanitize_date, left_join_rows
+from .utils import sanitize_location, sanitize_date, left_join_rows, get_default_columns
 import yaml
 import json
 import dateutil.parser
@@ -52,7 +51,9 @@ class RunDB:
             # skip excluded projects
             if project_excluded and row["study_accession"] in project_excluded: 
                 continue
-            if platform and row["instrument_platform"]!=platform:
+            if projects and row["study_accession"] not in projects:
+                continue
+            if platform and row["instrument_platform"].lower()!=platform.lower():
                 continue
             
             self._ers.add(row["sample_accession"])
@@ -140,7 +141,7 @@ def generate_data_from_bioprojects(args):
     default_columns = get_default_columns(args.defaults)
     project_name = os.path.basename(os.getcwd())
     runs_file,biosamples_file = get_taxid_files(args.taxid)
-    rundb = RunDB(runs_file)
+    rundb = RunDB(runs_file,platform=args.platform)
     samples = []
     for b in args.bioprojects:
         samples += list(rundb.get_project_samples(b))

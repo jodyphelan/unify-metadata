@@ -35,6 +35,7 @@ def main():
     parser_sub.add_argument("--find-wgs-id",action="store_true",help="Raw data file")
     parser_sub.add_argument("--taxid",type=str,help="Raw data file",required='--find-wgs-id' in sys.argv)
     parser_sub.add_argument("--project-name",type=str,help="Raw data file")
+    parser_sub.add_argument("--bioprojects",type=str,nargs="+",help="Restrict to these bioprojects")
     parser_sub.add_argument('--debug',action='store_true')
     parser_sub.set_defaults(func=pipeline)
 
@@ -54,6 +55,7 @@ def main():
     parser_sub.add_argument("--raw-data",type=str,help="Raw data file",required=True)
     parser_sub.add_argument("--find-wgs-id",action="store_true",help="Raw data file")
     parser_sub.add_argument("--taxid",type=str,help="Raw data file",required='--find-wgs-id' in sys.argv)
+    parser_sub.add_argument("--bioprojects",type=str,nargs="+",help="Restrict to these bioprojects")
     parser_sub.add_argument('--debug',action='store_true')
     parser_sub.set_defaults(func=standardise_raw_data)
 
@@ -63,6 +65,7 @@ def main():
     parser_sub.add_argument("--additional-data-id",type=str,help="Raw data file")
     parser_sub.add_argument("--missing-value",default="NA",type=str,help="Raw data file")
     parser_sub.add_argument("--outfile",type=str,help="Raw data file",required=True)
+    parser_sub.add_argument("--defaults",type=str,help="Raw data file")
     parser_sub.add_argument("files",type=str,nargs="+",help="Raw data file")
     parser_sub.set_defaults(func=combine_csv_files)
 
@@ -72,6 +75,7 @@ def main():
     parser_sub.add_argument("--defaults",type=str,help="Raw data file",required=True)
     parser_sub.add_argument("--country",type=str,help="Raw data file")
     parser_sub.add_argument("--outfile",type=str,default="data.clean.csv",help="Raw data file")
+    parser_sub.add_argument("--platform",type=str,default="illumina",help="Raw data file")
 
     parser_sub.set_defaults(func=generate_data_from_bioprojects)
 
